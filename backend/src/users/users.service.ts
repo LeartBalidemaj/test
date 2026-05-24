@@ -1,19 +1,25 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { Prisma, UserRole } from '@prisma/client';
+import { BaseService } from '../common/base/base.service';
+import { TenantScopedCrudService } from '../common/interfaces/crud-service.interface';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { UserRole } from '@prisma/client';
 
 const BCRYPT_ROUNDS = 10;
+type UserResponse = Prisma.UserGetPayload<{
+  select: ReturnType<UsersService['userSelect']>;
+}>;
 
 @Injectable()
-export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+export class UsersService
+  extends BaseService
+  implements TenantScopedCrudService<UserResponse, CreateUserDto, UpdateUserDto>
+{
+  constructor(private readonly prisma: PrismaService) {
+    super();
+  }
 
   findAll(tenantId: number) {
     return this.prisma.user.findMany({
@@ -28,10 +34,8 @@ export class UsersService {
       where: { id, tenantId },
       select: this.userSelect(),
     });
-    if (!user) {
-      throw new NotFoundException(`User with id ${id} not found`);
-    }
-    return user;
+
+    return this.ensureFound(user, 'User', id);
   }
 
   async create(tenantId: number, dto: CreateUserDto) {
@@ -79,7 +83,7 @@ export class UsersService {
       }
     }
 
-    const data: any = {
+    const data: Prisma.UserUpdateInput = {
       email: dto.email,
       role: dto.role,
     };
@@ -104,7 +108,7 @@ export class UsersService {
     });
   }
 
-  private userSelect() {
+  userSelect() {
     return {
       id: true,
       email: true,
