@@ -1,10 +1,14 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt } from 'class-validator';
+import { IsInt, IsOptional } from 'class-validator';
 
 export class TenantQueryDto {
-  @ApiProperty({ example: 1, description: 'Tenant ID for public catalog requests' })
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Required when not using tenant-prefixed URLs',
+  })
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
-  tenantId!: number;
+  tenantId?: number;
 }

@@ -8,8 +8,10 @@ import {
   Post,
   Put,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -23,6 +25,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import type { AuthUser } from '../auth/types/jwt-payload.interface';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { TenantQueryDto } from '../common/dto/tenant-query.dto';
+import { resolveTenantId } from '../common/utils/resolve-tenant-id';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -35,8 +38,9 @@ export class CategoriesController {
   @Public()
   @Get()
   @ApiOperation({ summary: 'List all categories for a tenant' })
-  findAll(@Query() query: TenantQueryDto) {
-    return this.categoriesService.findAll(query.tenantId);
+  findAll(@Query() query: TenantQueryDto, @Req() req: Request) {
+    const tenantId = resolveTenantId(req.tenant, query.tenantId);
+    return this.categoriesService.findAll(tenantId);
   }
 
   @Public()
@@ -46,8 +50,10 @@ export class CategoriesController {
   findOne(
     @Param('id', ParseIntPipe) id: number,
     @Query() query: TenantQueryDto,
+    @Req() req: Request,
   ) {
-    return this.categoriesService.findOne(query.tenantId, id);
+    const tenantId = resolveTenantId(req.tenant, query.tenantId);
+    return this.categoriesService.findOne(tenantId, id);
   }
 
   @ApiBearerAuth()

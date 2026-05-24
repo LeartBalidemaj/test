@@ -8,10 +8,12 @@ import {
   Post,
   Put,
   Query,
+  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
@@ -27,6 +29,7 @@ import { Public } from '../auth/decorators/public.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { TenantQueryDto } from '../common/dto/tenant-query.dto';
+import { resolveTenantId } from '../common/utils/resolve-tenant-id';
 import { CreateProductDto } from './dto/create-product.dto';
 import { PublicProductQueryDto } from './dto/public-product-query.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -44,8 +47,9 @@ export class ProductsController {
   @ApiOperation({
     summary: 'List products with optional name, category, and price filters',
   })
-  findAll(@Query() query: PublicProductQueryDto) {
-    const { tenantId, ...filters } = query;
+  findAll(@Query() query: PublicProductQueryDto, @Req() req: Request) {
+    const { tenantId: queryTenantId, ...filters } = query;
+    const tenantId = resolveTenantId(req.tenant, queryTenantId);
     return this.productsService.findAll(tenantId, filters);
   }
 
@@ -56,8 +60,10 @@ export class ProductsController {
   findOne(
     @Param('id', ParseIntPipe) id: number,
     @Query() query: TenantQueryDto,
+    @Req() req: Request,
   ) {
-    return this.productsService.findOne(query.tenantId, id);
+    const tenantId = resolveTenantId(req.tenant, query.tenantId);
+    return this.productsService.findOne(tenantId, id);
   }
 
   @ApiBearerAuth()
