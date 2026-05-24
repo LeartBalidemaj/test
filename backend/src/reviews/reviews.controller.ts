@@ -7,7 +7,9 @@ import {
   ParseIntPipe,
   Post,
   Query,
+  Req,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -17,6 +19,7 @@ import {
 import { Public } from '../auth/decorators/public.decorator';
 import type { AuthUser } from '../auth/types/jwt-payload.interface';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { resolveTenantId } from '../common/utils/resolve-tenant-id';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { ReviewQueryDto } from './dto/review-query.dto';
 import { ReviewsService } from './reviews.service';
@@ -29,8 +32,9 @@ export class ReviewsController {
   @Public()
   @Get()
   @ApiOperation({ summary: 'List reviews for a product' })
-  findByProduct(@Query() query: ReviewQueryDto) {
-    return this.reviewsService.findByProduct(query.tenantId, query.productId);
+  findByProduct(@Query() query: ReviewQueryDto, @Req() req: Request) {
+    const tenantId = resolveTenantId(req.tenant, query.tenantId);
+    return this.reviewsService.findByProduct(tenantId, query.productId);
   }
 
   @ApiBearerAuth()

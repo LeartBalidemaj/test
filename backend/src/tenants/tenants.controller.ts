@@ -1,28 +1,78 @@
-import { Controller, Get, Post, Put, Delete, Param, Body } from '@nestjs/common';
-import { TenantsService } from './tenants.service';
-import { ApiTags, ApiOperation, ApiParam, ApiBody } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiBody,
+  ApiTags,
+} from '@nestjs/swagger';
+import { UserRole } from '@prisma/client';
 import { Public } from '../auth/decorators/public.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import type { AuthUser } from '../auth/types/jwt-payload.interface';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CreateTenantDto } from './dto/create-tenant.dto';
+import { UpdateTenantConfigDto } from './dto/update-tenant-config.dto';
+import { TenantsService } from './tenants.service';
 
 @ApiTags('Tenants')
-@Public()
 @Controller('tenants')
 export class TenantsController {
   constructor(private readonly tenantsService: TenantsService) {}
 
+  @Public()
+  @Get(':slug/config')
+  @ApiOperation({ summary: 'Get public store configuration for a tenant' })
+  @ApiParam({ name: 'slug', example: 'tech-store' })
+  getConfig(@Param('slug') slug: string) {
+    return this.tenantsService.getTenantConfig(slug);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Put(':slug/config')
+  @ApiOperation({ summary: 'Update store configuration (tenant admin only)' })
+  @ApiParam({ name: 'slug', example: 'tech-store' })
+  updateConfig(
+    @Param('slug') slug: string,
+    @CurrentUser() user: AuthUser,
+    @Body() dto: UpdateTenantConfigDto,
+  ) {
+    return this.tenantsService.updateTenantConfig(
+      slug,
+      user.tenantId,
+      user.role,
+      dto,
+    );
+  }
+
+  @Public()
   @Get()
   @ApiOperation({ summary: 'Get all tenants' })
   findAll() {
     return this.tenantsService.findAll();
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get a tenant by ID' })
+  @Public()
+  @Get('by-id/:id')
+  @ApiOperation({ summary: 'Get a tenant by numeric ID' })
   @ApiParam({ name: 'id', type: Number })
   findOne(@Param('id') id: string) {
     return this.tenantsService.findOne(+id);
   }
 
+  @Public()
   @Post()
   @ApiOperation({ summary: 'Create a new tenant' })
   @ApiBody({
@@ -30,23 +80,25 @@ export class TenantsController {
       example: {
         name: 'Company A',
         slug: 'company-a',
-        email: 'admin@companya.com'
-      }
-    }
+        email: 'admin@companya.com',
+      },
+    },
   })
-  create(@Body() body:  CreateTenantDto) {
+  create(@Body() body: CreateTenantDto) {
     return this.tenantsService.create(body);
   }
 
-  @Put(':id')
-  @ApiOperation({ summary: 'Update a tenant' })
+  @Public()
+  @Put('by-id/:id')
+  @ApiOperation({ summary: 'Update a tenant by numeric ID' })
   @ApiParam({ name: 'id', type: Number })
-  update(@Param('id') id: string, @Body() body: any) {
+  update(@Param('id') id: string, @Body() body: Record<string, unknown>) {
     return this.tenantsService.update(+id, body);
   }
 
-  @Delete(':id')
-  @ApiOperation({ summary: 'Delete a tenant' })
+  @Public()
+  @Delete('by-id/:id')
+  @ApiOperation({ summary: 'Delete a tenant by numeric ID' })
   @ApiParam({ name: 'id', type: Number })
   remove(@Param('id') id: string) {
     return this.tenantsService.remove(+id);
